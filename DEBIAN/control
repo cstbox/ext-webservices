@@ -1,0 +1,11 @@
+Package: cstbox-ext-webservices
+Version: 1.0.0
+Section: base
+Priority: optional
+Architecture: all
+Depends: cstbox-core, cstbox-deps-http
+Maintainer: Eric Pascual <eric.pascual@cstb.fr>
+Description: CSTBox Web services base infrastrucure
+ This package installs the extension providing the Web services
+ infrastructure allowing extension packages to provide a Web based API of their
+ services as plugins.
