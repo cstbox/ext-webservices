@@ -23,6 +23,7 @@ import ConfigParser
 import importlib
 import signal
 import sys
+import re
 from collections import namedtuple
 
 import tornado.web
@@ -199,8 +200,8 @@ class AppServer(object):
 
         IMPORTANT: URLs included in the service routing table are relative. A kind-of
         namespace mechanism is used when merging service level routing tables to build
-        the application global one, by prepending the application root URL and the
-        service name. As a result, the effective URL of a route declared as `/bar` in
+        the application global one, by prefixing the provided URLs by the service name.
+        As a result, the effective URL of a route declared as `/bar` in
         the `foo` service local table will be `/api/foo/bar`. There is thus no risk of
         name clash in the case to services declare similar URLs. When building the resulting
         effective URL, care is taken to properly manage "/" at the concatenation point,
@@ -214,10 +215,14 @@ class AppServer(object):
         involves runtime dependencies, such as the connection with other
         services. This way, there will be no problem when importing the service
         module in contexts other than standard runtime, for instance during
-        unit tests or automatic documentation generation. The `_init_` function
-        cannot have parameters. It is called when the module is imported during
-        the discovery process, but since the order is undefined, its logic cannot
-        rely on what is done in other service plugins.
+        unit tests or automatic documentation generation.
+        The `_init_` function is called when the module is imported during the discovery process,
+        but since the order is undefined, its logic cannot rely on what is done in other
+        service plugins.
+        It has two keyword parameters :
+            - logger : used to pass the owner service logger if defined
+            - settings : used to pass the dictionary containing the content of the manifest
+            "settings" section if any
 
         Parameters:
             home : src
@@ -275,7 +280,13 @@ class AppServer(object):
                 handlers = []
                 for rule in mapping:
                     effective_url = url_base + rule[0].lstrip('/')
-                    handlers.append(((effective_url,) + rule[1:]))
+                    # check first if the rule is valid as a regexp
+                    try:
+                        re.compile(effective_url)
+                    except re.error as e:
+                        raise Exception('"%s" is an invalid route specification (%s)' % (effective_url, e.message))
+                    else:
+                        handlers.append(((effective_url,) + rule[1:]))
                 services.append(ServiceDescriptor(service_name, label, handlers))
                 self._logger.info("--> success")
 
@@ -284,10 +295,9 @@ class AppServer(object):
                 self._logger.exception(msg)
                 raise
             except Exception as e:
-                self._logger.error("Cannot load service : %s", str(e))
                 self._logger.exception(e)
+                self._logger.error("Could not load service '%s' because of previous exception", service_name)
         return services
-
 
     class InvalidRequest(WSHandler):
         def do_get(self, *args, **kwargs):
