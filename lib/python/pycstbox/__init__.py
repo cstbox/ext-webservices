@@ -1,4 +1,4 @@
-""" Global settings """
+# EXCLUDE_FROM_DIST
 
 # This file is part of CSTBox.
 #
