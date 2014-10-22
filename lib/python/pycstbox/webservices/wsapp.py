@@ -77,6 +77,20 @@ class WSHandler(tornado.web.RequestHandler):
     def do_post(self, *args, **kwargs):
         self.reply_not_implemented()
 
+    def delete(self, *args, **kwargs):
+        if self._logger and self.application.settings['debug']:
+            self._logger.setLevel(log.DEBUG)
+
+        try:
+            self.do_delete(*args, **kwargs)
+        except tornado.web.HTTPError:
+            raise
+        except Exception as e:
+            self.exception_reply(e)
+
+    def do_delete(self, *args, **kwargs):
+        self.reply_not_implemented()
+
     def write_error(self, status_code, exc_info=None, **kwargs):
         """ Overridden version of error reporting, returning the reply as JSON data.
         """
