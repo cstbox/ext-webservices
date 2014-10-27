@@ -254,28 +254,32 @@ class AppServer(object):
         # We build the services list by scanning sub-directories of the home
         # one, keeping only the ones containing the mandatory files. They are
         # then sorted by service names.
-        for service_name in sorted(
-            [d for d in os.listdir(home)
-                if os.path.isdir(os.path.join(home, d))and
-                    os.path.exists(os.path.join(home, d, MANIFEST_FILE_NAME)) and
-                    os.path.exists(os.path.join(home, d, '__init__.py'))
-            ]):
+        marker_files = {MANIFEST_FILE_NAME, '__init__.py'}
+        for service_name in sorted([d for d in os.listdir(home) if os.path.isdir(os.path.join(home, d))]):
             service_path = os.path.join(home, service_name)
-            mfpath = os.path.join(service_path, MANIFEST_FILE_NAME)
+            # next filtering could have been done in a more Pythonic way inside for loop definition,
+            # but doing this explicitly provides more information in the logs in case of trouble
+            self._logger.info("analysing directory %s...", service_path)
+            if not marker_files.issubset(os.listdir(service_path)):
+                self._logger.info("*** expected files not found => discarded")
+                continue
+
+            self._logger.info("... valid service location")
+            manifest_path = os.path.join(service_path, MANIFEST_FILE_NAME)
             mf = ConfigParser.SafeConfigParser(self._services_cfg_defaults)
-            mf.read(mfpath)
+            mf.read(manifest_path)
             label = mf.get(MANIFEST_MAIN_SECTION, 'label')
             mapping_attr = mf.get(MANIFEST_MAIN_SECTION, 'mapping')
 
             module_name = '.'.join([SERVICES_PACKAGE_NAME, service_name])
-            self._logger.info("loading service '%s' from module '%s'...", service_name, module_name)
+            self._logger.info("... loading service '%s' from module '%s'...", service_name, module_name)
             try:
                 module = importlib.import_module(module_name)
                 # run the module initialization code if any
                 if hasattr(module, '_init_'):
                     init_func = getattr(module, '_init_')
                     if callable(init_func):
-                        self._logger.info('invoking module _init_ function')
+                        self._logger.info('... invoking module _init_ function...')
                         svc_logger = self._logger.getChild(service_name)
                         svc_logger.setLevel(self._logger.getEffectiveLevel())
 
@@ -286,7 +290,7 @@ class AppServer(object):
                             settings = None
 
                         init_func(logger=svc_logger, settings=settings)
-                        self._logger.info('module _init_ ok')
+                        self._logger.info('... module _init_ OK')
 
                 url_base = "%s/%s/" % (self._app_url_base.rstrip('/'), service_name)
                 mapping = getattr(module, mapping_attr)
@@ -302,7 +306,7 @@ class AppServer(object):
                     else:
                         handlers.append(((effective_url,) + rule[1:]))
                 services.append(ServiceDescriptor(service_name, label, handlers))
-                self._logger.info("--> success")
+                self._logger.info(">>> success")
 
             except (ImportError, AttributeError) as e:
                 msg = '[%s] %s' % (e.__class__.__name__, str(e))
@@ -310,7 +314,7 @@ class AppServer(object):
                 raise
             except Exception as e:
                 self._logger.exception(e)
-                self._logger.error("Could not load service '%s' because of previous exception", service_name)
+                self._logger.error("*** Could not load service '%s' because of previous exception", service_name)
         return services
 
     class InvalidRequest(WSHandler):
