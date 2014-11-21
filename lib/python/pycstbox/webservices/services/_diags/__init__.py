@@ -16,12 +16,10 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with CSTBox.  If not, see <http://www.gnu.org/licenses/>.
 
-""" Test web service """
+""" Internal web services for tests """
 
 __author__ = 'Eric PASCUAL - CSTB (eric.pascual@cstb.fr)'
 
-
-import sys, inspect
 
 from pycstbox import log
 from pycstbox.webservices.wsapp import WSHandler
@@ -35,17 +33,23 @@ def _init_(logger=None, settings=None):
     _handlers_initparms['logger'] = logger if logger else log.getLogger('svc.hello')
 
 
-class SayHelloHandler(WSHandler):
-    """ Extended Web service base request handler """
-    def do_post(self):
+class HelloHandler(WSHandler):
+    def do_get(self):
         to_who = self.get_argument('to', 'World')
         self._logger.debug("saying hello to %s", to_who)
         self.write({'message': 'Hello ' + to_who})
 
+
+class RoutesHandler(WSHandler):
+    def do_get(self, *args, **kwargs):
+        routes = [handler[0] for handler in self.application.app_server._handlers]
+        self.write({'routes': routes})
+
 _handlers_initparms = {}
 
 handlers = [
-    ("/say", SayHelloHandler, _handlers_initparms),
+    ("/hello", HelloHandler, _handlers_initparms),
+    ("/routes", RoutesHandler, _handlers_initparms),
 ]
 
 

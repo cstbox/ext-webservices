@@ -407,6 +407,7 @@ class AppServer(object):
 
         settings['log_function'] = self._log_request
         self._application = tornado.web.Application(self._handlers, **settings) #pylint: disable=W0142
+        self._application.app_server = self
         self._http_server = tornado.httpserver.HTTPServer(self._application)
         self._http_server.listen(self._port)
         self._logger.info("listening on port %d", self._port)
