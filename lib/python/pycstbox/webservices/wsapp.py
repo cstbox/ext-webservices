@@ -59,6 +59,9 @@ class WSHandler(tornado.web.RequestHandler):
             raise
         except Exception as e:
             self.exception_reply(e)
+        else:
+            # force a write of the reply now, to avoid some clients considering they are stalled
+            self.flush()
 
     def do_get(self, *args, **kwargs):
         self.reply_not_implemented()
@@ -103,7 +106,7 @@ class WSHandler(tornado.web.RequestHandler):
 
     def exception_reply(self, e):
         type_, value, _tb = sys.exc_info()
-        if self._logger :
+        if self._logger:
             self._logger.exception("unexpected error '%s' with message '%s'" % (type_.__name__, value))
             self._logger.error('--- end of traceback ---')
 
