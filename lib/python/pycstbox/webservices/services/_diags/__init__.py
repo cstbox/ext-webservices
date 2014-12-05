@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with CSTBox.  If not, see <http://www.gnu.org/licenses/>.
 
-""" Internal web services for tests """
+""" Internal web services for tests and diagnostics"""
 
 __author__ = 'Eric PASCUAL - CSTB (eric.pascual@cstb.fr)'
 
