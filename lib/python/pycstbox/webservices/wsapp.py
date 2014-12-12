@@ -393,8 +393,6 @@ class AppServer(object):
         # 1/ basic part
         settings = {
             'debug': self._debug,
-            #TODO check if app_name setting is used somewhere or if it is specific to the webui app
-            'app_name': self.APP_NAME,
         }
 
         # 2/  specific settings as defined in custom_settings
