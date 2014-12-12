@@ -51,13 +51,6 @@ class WSHandler(tornado.web.RequestHandler):
             if self.application.settings['debug']:
                 self._logger.setLevel(log.DEBUG)
 
-    def _safe_flush(self):
-        try:
-            self.flush()
-        except RuntimeError:
-            # request was already finished
-            pass
-
     def _process_request(self, method, *args, **kwargs):
         try:
             method(*args, **kwargs)
@@ -69,8 +62,13 @@ class WSHandler(tornado.web.RequestHandler):
             else:
                 self.exception_reply(e)
         else:
-            # force a write of the reply now, to avoid some clients considering they are stalled
-            self._safe_flush()
+            # force a write of the reply now, to avoid some clients considering they are stalled,
+            # (tolerate request no more opened situation)
+            try:
+                self.flush()
+            except RuntimeError:
+                # request was already finished
+                pass
 
     def get(self, *args, **kwargs):
         self._process_request(self.do_get, *args, **kwargs)
