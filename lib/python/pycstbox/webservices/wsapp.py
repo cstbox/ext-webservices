@@ -48,48 +48,44 @@ class WSHandler(tornado.web.RequestHandler):
     def initialize(self, logger=None, **kwargs): #pylint: disable=W0221
         if logger:
             self._logger = logger
+            if self.application.settings['debug']:
+                self._logger.setLevel(log.DEBUG)
 
-    def get(self, *args, **kwargs):
-        if self._logger and self.application.settings['debug']:
-            self._logger.setLevel(log.DEBUG)
-
+    def _safe_flush(self):
         try:
-            self.do_get(*args, **kwargs)
-        except tornado.web.HTTPError:
-            raise
+            self.flush()
+        except RuntimeError:
+            # request was already finished
+            pass
+
+    def _process_request(self, method, *args, **kwargs):
+        try:
+            method(*args, **kwargs)
         except Exception as e:
-            self.exception_reply(e)
+            if self._logger:
+                self._logger.exception(e)
+            if isinstance(e, tornado.web.HTTPError):
+                raise
+            else:
+                self.exception_reply(e)
         else:
             # force a write of the reply now, to avoid some clients considering they are stalled
-            self.flush()
+            self._safe_flush()
+
+    def get(self, *args, **kwargs):
+        self._process_request(self.do_get, *args, **kwargs)
 
     def do_get(self, *args, **kwargs):
         self.reply_not_implemented()
 
     def post(self, *args, **kwargs):
-        if self._logger and self.application.settings['debug']:
-            self._logger.setLevel(log.DEBUG)
-
-        try:
-            self.do_post(*args, **kwargs)
-        except tornado.web.HTTPError:
-            raise
-        except Exception as e:
-            self.exception_reply(e)
+        self._process_request(self.do_post, *args, **kwargs)
 
     def do_post(self, *args, **kwargs):
         self.reply_not_implemented()
 
     def delete(self, *args, **kwargs):
-        if self._logger and self.application.settings['debug']:
-            self._logger.setLevel(log.DEBUG)
-
-        try:
-            self.do_delete(*args, **kwargs)
-        except tornado.web.HTTPError:
-            raise
-        except Exception as e:
-            self.exception_reply(e)
+        self._process_request(self.do_delete, *args, **kwargs)
 
     def do_delete(self, *args, **kwargs):
         self.reply_not_implemented()
@@ -112,26 +108,26 @@ class WSHandler(tornado.web.RequestHandler):
 
         self.set_status(500)
         data = {
-                'errtype': type_.__name__,
-                'message': str(value),
-                'additInfos': str(e.reason) if hasattr(e, 'reason') else ''
-                }
-        self.finish(data)
+            'errtype': type_.__name__,
+            'message': str(value),
+            'additInfos': str(e.reason) if hasattr(e, 'reason') else ''
+        }
+        self.write(data)
 
     def error_reply(self, message, addit_infos=None):
         self.set_status(500)
         data = {
-            'message' : message,
-            'additInfos' : addit_infos or ''
+            'message': message,
+            'additInfos': addit_infos or ''
         }
-        self.finish(data)
+        self.write(data)
 
     def reply_not_implemented(self):
         self.set_status(501)
         data = {
-                'message':'not yet implemented'
-                }
-        self.finish(data)
+            'message': 'not yet implemented'
+        }
+        self.write(data)
 
 
 class ServiceDescriptor(namedtuple('ServiceDescriptor', 'name label handlers')):
@@ -181,15 +177,16 @@ class AppServer(object):
                 self._logger.warn("No service found")
         return self._services
 
-    services = property(_get_services,
+    services = property(
+        _get_services,
         doc=""" The read-only list of discovered services """
-        )
+    )
 
     _services_cfg_defaults = {
         'mapping': 'handlers'
     }
 
-    def _discover_services(self, home=None): #pylint: disable=R0912
+    def _discover_services(self, home=None):    # pylint: disable=R0912
         """ Discover the services stored in the directory which path is provided.
 
         A service must be packaged as a Python sub-package, providing the following
@@ -331,7 +328,6 @@ class AppServer(object):
     toplevel_handlers = [
     ]
 
-
     fallback_handlers = [
         (r"/.*", InvalidRequest),
     ]
@@ -383,8 +379,10 @@ class AppServer(object):
         self._logger.info("services_home overridden to %s" % path)
         self._services_home = sysutils.checked_dir(path)
 
-    services_home = property(get_services_home, set_services_home,
-                            doc="the home directory in which services are stored")
+    services_home = property(
+        get_services_home, set_services_home,
+        doc="the home directory in which services are stored"
+    )
 
     def start(self, custom_settings):
         """ Starts the configured server """
@@ -462,10 +460,7 @@ class AppServer(object):
                 dont_log = False
             if dont_log:
                 self._muted_requests.append(key)
-                self._logger.warning(
-                    "request '%s' is muted => last time we log it",
-                   key
-                )
+                self._logger.warning("request '%s' is muted => last time we log it", key)
             log_method = self._logger.info
 
         elif handler.get_status() < 500:
@@ -475,7 +470,7 @@ class AppServer(object):
             log_method = self._logger.error
 
         request_time = 1000.0 * handler.request.request_time()
-        log_method("%d %s %.2fms", handler.get_status(),
-                   handler._request_summary(), request_time)    #pylint: disable=W0212
-
-
+        log_method(
+            "%d %s %.2fms", handler.get_status(),
+            handler._request_summary(), request_time
+        )    # pylint: disable=W0212
