@@ -82,6 +82,12 @@ class WSHandler(tornado.web.RequestHandler):
     def do_post(self, *args, **kwargs):
         self.reply_not_implemented()
 
+    def put(self, *args, **kwargs):
+        self._process_request(self.do_put, *args, **kwargs)
+
+    def do_put(self, *args, **kwargs):
+        self.reply_not_implemented()
+
     def delete(self, *args, **kwargs):
         self._process_request(self.do_delete, *args, **kwargs)
 
