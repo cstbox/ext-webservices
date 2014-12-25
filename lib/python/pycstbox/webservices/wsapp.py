@@ -205,7 +205,7 @@ class AppServer(object):
             minimal content :
                 [service]
                 label=<display label>
-                mapping=<mandatory module attribute containing the route table>
+                mapping=<module attribute containing the route table>
 
         The `mapping` key can be omitted, and will be defaulted to `handlers` in this case.
 
