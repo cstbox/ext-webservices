@@ -124,6 +124,11 @@ class WSHandler(tornado.web.RequestHandler):
             'message': message,
             'additInfos': addit_infos or ''
         }
+        if self._logger:
+            if addit_infos:
+                self._logger.error('request error: %s (addit infos: %s)', message, addit_infos)
+            else:
+                self._logger.error('request error: %s', message)
         self.write(data)
 
     def reply_not_implemented(self):
