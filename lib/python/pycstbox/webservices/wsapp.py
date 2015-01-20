@@ -118,8 +118,8 @@ class WSHandler(tornado.web.RequestHandler):
         }
         self.write(data)
 
-    def error_reply(self, message, addit_infos=None):
-        self.set_status(500)
+    def error_reply(self, message, status_code=500, addit_infos=None):
+        self.set_status(status_code)
         data = {
             'message': message,
             'additInfos': addit_infos or ''
