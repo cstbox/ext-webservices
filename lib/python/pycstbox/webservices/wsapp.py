@@ -16,8 +16,6 @@ service hot-(un)pluging is not supported (and will never be, since not really us
 the context of CSTBox framework usage).
 """
 
-__author__ = 'Eric Pascual - CSTB (eric.pascual@cstb.fr)'
-
 import os
 import ConfigParser
 import importlib
@@ -31,6 +29,8 @@ import tornado.httpserver
 import tornado.ioloop
 
 from pycstbox import log, config, sysutils
+
+__author__ = 'Eric Pascual - CSTB (eric.pascual@cstb.fr)'
 
 _here = os.path.dirname(__file__)
 
@@ -362,12 +362,6 @@ class AppServer(object):
 
         handlers.extend(self.fallback_handlers)
 
-        if self._logger.isEnabledFor(log.DEBUG):
-            self._logger.debug("Handler rules :")
-            for rule in handlers:
-                pattern, handler = rule[:2]
-                self._logger.debug(" - %s : %s", pattern, handler)
-
         return handlers
 
     def _sigterm_handler(self, _signum, _frame):
@@ -412,6 +406,10 @@ class AppServer(object):
 
         # setup request handlers by merging the one provided by the services
         self._handlers = self._setup_handlers(self.services)
+        self._logger.info("url dispatch rules:")
+        for rule in self._handlers:
+            pattern, handler = rule[:2]
+            self._logger.info(" - %s -> %s", pattern, handler.__name__)
 
         settings['log_function'] = self._log_request
         self._application = tornado.web.Application(self._handlers, **settings) #pylint: disable=W0142
